@@ -1,11 +1,16 @@
+# extract background and mean of sequiences
+
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import cv2
 import os
 
+# train_metadata and  train_labels path
 DATA_PATH = Path("/home/ivan/projects/datasets/wildlife")
-BACKGROUND_DATA_PATH = Path("/home/ivan/projects/datasets/wildlife/background2")
+# background path ~130Gb
+BACKGROUND_DATA_PATH = Path("/home/ivan/projects/datasets/wildlife/background")
+# mean path ~400Gb
 MEAN_DATA_PATH = Path("/home/ivan/projects/datasets/wildlife/mean")
 
 train_metadata = pd.read_csv(DATA_PATH / "train_metadata.csv", parse_dates=['datetime'])
