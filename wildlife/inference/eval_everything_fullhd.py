@@ -1,3 +1,5 @@
+# prepare predictions of all models of 9 and 10 seasons to train boosting models
+
 from pathlib import Path
 import numpy as np
 from tensorflow.keras.applications.inception_resnet_v2 import preprocess_input as insres_preprocess_input
