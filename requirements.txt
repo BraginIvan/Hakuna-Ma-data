@@ -1,0 +1,5 @@
+opencv-python
+pandas
+jupyter
+tensorflow==2.0.0
+pillow
