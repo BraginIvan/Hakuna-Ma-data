@@ -1,5 +1,6 @@
 opencv-python
 pandas
 jupyter
-tensorflow==2.0.0
+tensorflow-gpu==2.1.0
 pillow
+matplotlib
