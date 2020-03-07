@@ -1,26 +1,41 @@
+import logging, os
+logging.disable(logging.WARNING)
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+import logging
+logging.getLogger("tensorflow").setLevel(logging.WARNING)
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from tensorflow.keras.optimizers import Adam, RMSprop
+from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import categorical_accuracy
 from tensorflow.keras.callbacks import LearningRateScheduler
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from PIL import ImageFile
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Dropout, Concatenate, GlobalMaxPooling2D, GlobalAveragePooling2D, Input, \
-    Lambda
+from tensorflow.keras.models import load_model
+import sys
+
+import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+  except RuntimeError as e:
+    # Memory growth must be set before GPUs have been initialized
+    print(e)
+
 
 from tensorflow.keras.applications import inception_resnet_v2
 
-DATA_PATH = Path("/home/ivan/projects/datasets/wildlife")
+DATA_PATH = Path(sys.argv[1])
 
 train_metadata = pd.read_csv(DATA_PATH / "train_metadata.csv")
 train_labels = pd.read_csv(DATA_PATH / "train_labels.csv", index_col="seq_id")
 
 train_metadata['season'] = train_metadata.seq_id.map(lambda x: x.split('#')[0])
 train_metadata = train_metadata.sort_values('file_name').set_index('seq_id')
-
-
 
 train_labels = train_labels[train_labels.index.isin(train_metadata.index)]
 
@@ -49,80 +64,106 @@ val_gen_df = val_y.join(val_x)
 label_columns = train_labels.columns.tolist()
 
 val_gen_df['file_name'] = val_gen_df.apply(
-    lambda x: str(DATA_PATH) + "/"+ 'background/val/' + ('empty' if x['empty'] ==1 else 'animal') + "/"+ x.season+ "/"+ x.cam_id+ "/"+x.angle_id+ "/"+ x.file_name.split('/')[-1], axis=1
+    lambda x: str(DATA_PATH) + '/preprocessed/background/val/' + ('empty' if x['empty'] ==1 else 'animal') + "/"+ x.season+ "/"+ x.cam_id+ "/"+x.angle_id+ "/"+ x.file_name.split('/')[-1], axis=1
 )
 
 train_gen_df['file_name'] = train_gen_df.apply(
-    lambda x: str(DATA_PATH) + "/"+ 'background/train/' + ('empty' if x['empty'] ==1 else 'animal') + "/"+ x.season+ "/"+ x.cam_id+ "/"+x.angle_id+ "/"+ x.file_name.split('/')[-1], axis=1
+    lambda x: str(DATA_PATH) + '/preprocessed/background/train/' + ('empty' if x['empty'] ==1 else 'animal') + "/"+ x.season+ "/"+ x.cam_id+ "/"+x.angle_id+ "/"+ x.file_name.split('/')[-1], axis=1
 )
+
+class Pipeline:
+    def __init__(self,resolution,batch_size,epoches,start_lr):
+        self.resolution = resolution
+        self.batch_size = batch_size
+        self.epoches = epoches
+        self.start_lr = start_lr
+
+
+pipelines = [
+
+    Pipeline(resolution=(240, 320),
+             batch_size=32,
+             epoches=20,
+             start_lr=0.0001
+             ),
+    Pipeline(resolution=(360, 480),
+             batch_size=16,
+             epoches=15,
+             start_lr=0.00003
+             ),
+    Pipeline(resolution=(384, 512),
+             batch_size=16,
+             epoches=15,
+             start_lr=0.00001
+             )]
+
+train_steps = 5000
+val_steps = 100
+evaluation_steps = 20000
+
+if sys.argv[2] == "0":
+    train_steps = 20
+    val_steps = 10
+    evaluation_steps = 2000
 
 
 
 datagen_flip = ImageDataGenerator(preprocessing_function=inception_resnet_v2.preprocess_input, horizontal_flip=True)
 datagen = ImageDataGenerator(preprocessing_function=inception_resnet_v2.preprocess_input)
 
-target_size = (360, 480)
-
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-train_datagen = datagen_flip.flow_from_dataframe(
-    dataframe=train_gen_df,
-    x_col="file_name",
-    y_col=label_columns,
-    class_mode="other",
-    target_size=target_size,
-    batch_size=16,
-    shuffle=True
-)
 
-val_datagen = datagen.flow_from_dataframe(
-    dataframe=val_gen_df,
-    x_col="file_name",
-    y_col=label_columns,
-    class_mode="other",
-    target_size=target_size,
-    batch_size=32,
-    shuffle=True
-)
+def get_gens(target_size, batch_size):
+    train_datagen = datagen_flip.flow_from_dataframe(
+        dataframe=train_gen_df,
+        x_col="file_name",
+        y_col=label_columns,
+        class_mode="other",
+        target_size=target_size,
+        batch_size=batch_size,
+        shuffle=True
+    )
 
-
-transfer = inception_resnet_v2.InceptionResNetV2(include_top=False)
-max_pooling = GlobalMaxPooling2D(name="max_pooling")(transfer.output)
-outputs = Dense(len(label_columns), activation="sigmoid")(max_pooling)
-model = Model(inputs=transfer.input, outputs=outputs)
-
-for layer in model.layers:
-    layer.trainable = False
-for layer in model.layers[-1:]:
-    layer.trainable = True
-
-opt = Adam()
-model.compile(optimizer=opt, loss="binary_crossentropy", metrics=[categorical_accuracy])
-model.fit_generator(
-    train_datagen,
-    steps_per_epoch=1000,
-    validation_data=val_datagen,
-    validation_steps=len(val_datagen),
-    epochs=2)
-
-for layer in model.layers:
-    layer.trainable = True
+    val_datagen = datagen.flow_from_dataframe(
+        dataframe=val_gen_df,
+        x_col="file_name",
+        y_col=label_columns,
+        class_mode="other",
+        target_size=target_size,
+        batch_size=batch_size,
+        shuffle=True
+    )
+    return train_datagen, val_datagen
 
 
-def scheduler(epoch):
-    if epoch < 5:
-        return 0.0002
-    else:
-        return 0.0002 * np.exp(0.1 * (5 - epoch))
+model = load_model("./insres_360_v2.h5")
 
+def get_scheduler(start_lr):
+    def scheduler(epoch):
+        lr = start_lr * np.exp(0.15 * (- epoch))
+        print("lr =", lr)
+        return lr
+    return scheduler
 
-opt = Adam()
-callback = LearningRateScheduler(scheduler)
-model.compile(optimizer=opt, loss="binary_crossentropy", metrics=[categorical_accuracy])
-model.fit_generator(
-    train_datagen,
-    steps_per_epoch=5000,
-    validation_data=val_datagen,
-    validation_steps=len(val_datagen),
-    epochs=40)
+for pipeline in pipelines:
+    callback = LearningRateScheduler(get_scheduler(pipeline.start_lr))
 
-model.save("_background_insres_%d_%d.h5" % target_size)
+    train_datagen, val_datagen = get_gens(pipeline.resolution, pipeline.batch_size)
+
+    print("resolution {} all layers".format(pipeline.resolution))
+
+    opt = Adam()
+    model.compile(optimizer=opt, loss="binary_crossentropy", metrics=[categorical_accuracy])
+    model.fit_generator(
+        train_datagen,
+        steps_per_epoch=train_steps,
+        validation_data=val_datagen,
+        validation_steps=val_steps,
+        callbacks=[callback],
+        epochs=pipeline.epoches
+    )
+    model_name = "background_insres_{}".format(pipeline.resolution[0])   + ".h5"
+    model.save(model_name)
+    print(model_name, 'evaluation')
+    model.evaluate(val_datagen, steps=evaluation_steps)
+

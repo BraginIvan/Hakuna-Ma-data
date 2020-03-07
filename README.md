@@ -72,7 +72,8 @@ One pipeline on a single RTX 2080 Ti + 64 RAM + SSD takes ~ 48 hours.
 Pre-trained models can be found by the link https://yadi.sk/d/a1HwAVbvKiIozg. 
 The pretrained model were trained slightly different.
 I trained on seasons 1 and 2, then downloaded more seasons and fine tuned, then preprocessed images `wildlife/preprocessing/remove_exif.ipynb` and tuned more. 
-So the result using this script can be different (better or worse). 
+So the result using this script can be different (better or worse).
+(finally I reproduced losses using this script) 
 
 `ll  | grep insres`
 
@@ -87,7 +88,13 @@ So the result using this script can be different (better or worse).
 
 # Train DNN by background images
 
-`python wildlife/training/background_images.py $DATASET_PATH `
+check mode (fast training):
+
+`python wildlife/training/background_images.py $DATASET_PATH 0`
+
+training mode
+
+`python wildlife/training/background_images.py $DATASET_PATH 1`
 
 `ll  | grep insres  | grep background`
 
