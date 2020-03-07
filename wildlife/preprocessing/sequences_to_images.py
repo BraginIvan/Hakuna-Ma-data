@@ -16,9 +16,9 @@ class PreProcessor:
         # train_metadata and  train_labels path
         self.DATA_PATH = Path(dataset_path)
         # background path ~130Gb
-        self.BACKGROUND_DATA_PATH = self.DATA_PATH / 'background'
+        self.BACKGROUND_DATA_PATH = self.DATA_PATH / 'preprocessed' / 'background'
         # mean path ~400Gb
-        self.MEAN_DATA_PATH = self.DATA_PATH / 'mean'
+        self.MEAN_DATA_PATH = self.DATA_PATH / 'preprocessed' / 'mean'
 
     def process(self, group):
         try:
