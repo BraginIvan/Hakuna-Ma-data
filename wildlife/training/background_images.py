@@ -99,7 +99,7 @@ pipelines = [
 
 train_steps = 5000
 val_steps = 100
-evaluation_steps = 20000
+evaluation_steps = 5000
 
 version = sys.argv[2]
 if version == "0":

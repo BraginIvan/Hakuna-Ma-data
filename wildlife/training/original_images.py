@@ -84,7 +84,7 @@ elif version == '1':
                  )]
     train_steps = 10000
     val_steps = 100
-    evaluation_steps = 20000
+    evaluation_steps = 5000
 elif version == '2':
     pipelines = [
         Pipeline(resolution=(224, 224),
@@ -109,7 +109,7 @@ elif version == '2':
                  )]
     train_steps = 5000
     val_steps = 100
-    evaluation_steps = 20000
+    evaluation_steps = 5000
 else:
     resolutions = []
     epoch_train_steps = 0
