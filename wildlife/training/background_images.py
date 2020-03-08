@@ -101,10 +101,11 @@ train_steps = 5000
 val_steps = 100
 evaluation_steps = 20000
 
-if sys.argv[2] == "0":
+version = sys.argv[2]
+if version == "0":
     train_steps = 20
     val_steps = 10
-    evaluation_steps = 2000
+    evaluation_steps = 200
 
 
 
@@ -162,7 +163,7 @@ for pipeline in pipelines:
         callbacks=[callback],
         epochs=pipeline.epoches
     )
-    model_name = "background_insres_{}".format(pipeline.resolution[0])   + ".h5"
+    model_name = "background_insres_{}_v{}".format(pipeline.resolution[0], version)   + ".h5"
     model.save(model_name)
     print(model_name, 'evaluation')
     model.evaluate(val_datagen, steps=evaluation_steps)
