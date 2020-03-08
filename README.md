@@ -53,7 +53,7 @@ Run script to create background and mean images/.
 
 It will create `DATASET_PATH/preprocessed/background` and `DATASET_PATH/preprocessed/mean` folders with preprocessed images
 
-You can look at images using wildlife/preprocessing/view.ipynb notebook.
+You can look at images using https://github.com/BraginIvan/Hakuna-Ma-data/blob/master/wildlife/preprocessing/view.ipynb notebook.
 
 
 # Train DNN by original images
@@ -61,7 +61,7 @@ You can look at images using wildlife/preprocessing/view.ipynb notebook.
 
 arguments:
 - path to dataset ($DATASET_PATH)
-- mode (0 - fast mode to be sure everything works) (1 and 2 slightly different pipelines foe ensembling)
+- mode (0 - fast mode to be sure everything works) (1 and 2 slightly different pipelines for ensembling)
 
 check if pipeline works:
  
@@ -139,7 +139,12 @@ Looks like there is a memory leak of predict method in tensorflow-gpu==2.1.0. In
 
 `ll  | grep predictions`
 
+- rw-r--r-- 1 ivan ivan  154140986 мар  8 17:28 predictions_SER_S10.csv
+- rw-r--r-- 1 ivan ivan  154130133 мар  8 16:33 predictions_SER_S9.csv
+
 
 # train boosting
 
 open in jupyter `wildlife/boosing/final_boosting-v12.ipynb`, setup  DATASET_PATH and run all .
+
+
