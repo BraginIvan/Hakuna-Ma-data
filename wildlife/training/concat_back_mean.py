@@ -119,7 +119,7 @@ def back_mean_gen(df, flip=True):
     while True:
         sample = df.sample(n = 8)
         mean_imgs = np.array([inception_resnet_v2.preprocess_input(cv2.resize(cv2.imread(p), (target_size[1], target_size[0]))[:,:,::-1]) for p in sample.mean_file_name])
-        back_imgs = np.array([cv2.resize(cv2.imread(p), (target_size[1], target_size[0]))[:,:,::-1]/255 for p in sample.back_file_name])
+        back_imgs = np.array([inception_resnet_v2.preprocess_input(cv2.resize(cv2.imread(p), (target_size[1], target_size[0]))[:,:,::-1]) for p in sample.back_file_name])
         if flip and random.choice([True, False]):
             mean_imgs=mean_imgs[:,:,::-1,:]
             back_imgs=back_imgs[:,:,::-1,:]

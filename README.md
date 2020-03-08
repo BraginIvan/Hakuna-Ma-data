@@ -117,16 +117,29 @@ check mode (fast training):
 
 `python wildlife/training/concat_back_mean.py $DATASET_PATH 0`
 
-`ll  | grep insres  | grep concat`
+`ll  | grep connected`
+
+- rw-r--r-- 1 ivan ivan 1019633752  8 07:10 connected_model_v0.h5
+
 
 
 training mode
 
 `python wildlife/training/concat_back_mean.py $DATASET_PATH 1`
 
+`ll  | grep connected`
+
+- rw-r--r-- 1 ivan ivan 1019633752  8 07:10 connected_model_v1.h5
 
 # prepare csv with predictions of seasons 10 and 9 for boosting
 
+Looks like there is a memory leak of predict method in tensorflow-gpu==2.1.0. In case of memory error please downgrade to tensorflow-gpu==2.0.1
+
+`python wildlife/inference/eval_everything_fullhd.py $DATASET_PATH`
+
+`ll  | grep predictions`
+
+
 # train boosting
 
-
+open in jupyter `wildlife/boosing/final_boosting-v12.ipynb`, setup  DATASET_PATH and run all .

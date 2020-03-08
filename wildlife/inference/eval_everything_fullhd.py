@@ -7,21 +7,31 @@ import cv2
 from PIL import Image
 import os
 import multiprocessing
-DATA_PATH = Path("../../datasets/wildlife")
-IMGS_PATH = '/media/ivan/data/'
-# IMGS_PATH = '/media/ivan/cd486894-77c5-442b-8738-f82e04c36202/'
+import sys
+import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+  except RuntimeError as e:
+    # Memory growth must be set before GPUs have been initialized
+    print(e)
+
+DATA_PATH = Path(sys.argv[1])
+
 from tensorflow.keras.models import load_model as tf_load_model
 
-model_480_360 = tf_load_model('insres_480_360.h5')
-model_480_360_v2 = tf_load_model('insres_480_360_v2.h5')
-model_512_384_v2 = tf_load_model('insres_512_384_v2.h5')
-model_back = tf_load_model('background_insres_all_lr.h5')
-model_mean_back_2models = tf_load_model('connected_model.h5')
+model_480_360 = tf_load_model('insres_360_v1.h5', compile=False)
+model_480_360_v2 = tf_load_model('insres_360_v2.h5', compile=False)
+model_512_384_v2 = tf_load_model('insres_384_v1.h5', compile=False)
+model_back = tf_load_model('background_insres_360_v1.h5', compile=False)
+model_mean_back_2models = tf_load_model('connected_model_v1.h5', compile=False)
 
-for test_season in [10]:
-    start = 331700
-    if test_season==10:
-        start = 209700
+for test_season in [9, 10]:
+
     test_season = "SER_S" + str(test_season)
 
     import pandas as pd
@@ -39,7 +49,7 @@ for test_season in [10]:
 
     train_gen_df = train_labels.join(train_metadata, how='right')
 
-    my_file = open(f"KD/everything_fullhd_{test_season}_add4.csv", "w")
+    my_file = open(f"predictions_{test_season}.csv", "w")
 
     my_file.write('seq_id_buf' + "," +
                     ",".join(['pred_back_as480_' + c for c in label_columns]) + ',' +
@@ -101,7 +111,7 @@ for test_season in [10]:
         except:
             return None
 
-    group = train_gen_df.groupby('seq_id').apply(lambda df: (str(df.index[0]), df['file_name'].values, df))[start:]
+    group = train_gen_df.groupby('seq_id').apply(lambda df: (str(df.index[0]), df['file_name'].values, df))
     least_n = len(group)
     pool = multiprocessing.Pool(3)
 
@@ -112,7 +122,7 @@ for test_season in [10]:
         seq_id = a[0]
         try:
 
-            imgs = pool.map(read, [str(IMGS_PATH + "/" + p) for p in a[1][:3]])
+            imgs = pool.map(read, [str(DATA_PATH / p) for p in a[1][:3]])
             imgs = np.array([i for i in imgs if i is not None])
             if len(imgs) == 0:
                 continue
@@ -139,7 +149,6 @@ for test_season in [10]:
             # cv2.waitKey(0)
 
 
-
             first_img_buf_512.append(insres_preprocess_input(resize_cv2(imgs[0], (512,384))))
             first_img_buf_480.append(insres_preprocess_input(resize_cv2(imgs[0], (480,360))))
             if len(imgs) > 1:
@@ -162,8 +171,8 @@ for test_season in [10]:
 
             imgs_mean_buf_512.append(insres_preprocess_input(resize_cv2(deepcopy(imgs_mean), (512, 384))))
             imgs_mean_buf_480.append(insres_preprocess_input(resize_cv2(deepcopy(imgs_mean), (480, 360))))
-            imgs_back_buf_512.append(resize_cv2(deepcopy(imgs_back), (512, 384)) / 255)
-            imgs_back_buf_480.append(resize_cv2(deepcopy(imgs_back), (480, 360)) / 255)
+            imgs_back_buf_512.append(insres_preprocess_input(resize_cv2(deepcopy(imgs_back), (512, 384))))
+            imgs_back_buf_480.append(insres_preprocess_input(resize_cv2(deepcopy(imgs_back), (480, 360))))
 
             count_imgs.append(len(imgs))
             seq_id_buf.append(seq_id)
@@ -172,14 +181,11 @@ for test_season in [10]:
 
         if len(seq_id_buf) == 16 or least_n == 0:
             counter += len(seq_id_buf)
-            # print(counter)
 
             pred_back_as480 = model_back.predict(np.array(imgs_back_buf_480))  # +
             pred_back_as512 = model_back.predict(np.array(imgs_back_buf_512))  # ?
-            pred_mean_back_2models_as480 = model_mean_back_2models.predict(
-                [np.array(imgs_back_buf_480), np.array(imgs_mean_buf_480)])  # +
-            pred_mean_back_2models_as512 = model_mean_back_2models.predict(
-                [np.array(imgs_back_buf_512), np.array(imgs_mean_buf_512)])  # ?
+            pred_mean_back_2models_as480 = model_mean_back_2models.predict([np.array(imgs_back_buf_480), np.array(imgs_mean_buf_480)])  # +
+            pred_mean_back_2models_as512 = model_mean_back_2models.predict([np.array(imgs_back_buf_512), np.array(imgs_mean_buf_512)])  # ?
             pred_model_480_360_as480_img1 = model_480_360.predict(np.array(first_img_buf_480))  # +
             pred_model_480_360_as480_img2 = model_480_360.predict(np.array(second_img_buf_480))  # +
             pred_model_480_360_as480_img3 = model_480_360.predict(np.array(third_img_buf_480))  # +
