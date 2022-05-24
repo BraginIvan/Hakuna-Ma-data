@@ -1,7 +1,7 @@
 opencv-python
 pandas
 jupyter
-tensorflow-gpu==2.1.0
+tensorflow-gpu==2.6.4
 pillow
 matplotlib
 lightgbm
